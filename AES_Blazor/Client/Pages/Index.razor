@@ -1,0 +1,73 @@
+﻿@page "/"
+@inject HttpClient Http
+@using Newtonsoft.Json
+@using System.Text;
+
+<h1>Payment</h1>
+
+<EditForm OnSubmit="@FormSubmit" Model="@model">
+
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <h4>Add Credit Card</h4>
+    @if (result != null)
+    {
+        <div class="alert alert-@(result.Error == null ? "success" : "danger")">
+            @result.Message
+        </div>
+    }
+    <div class="form-group row">
+        <label for="cardholderName" class="col-sm-2 col-form-label">Cardholder Name:</label>
+        <input id="cardholderMame" class="form-control col-sm-6 input-lg" type="text"
+               @bind="model.CardHolderName">
+    </div>
+    <div class="form-group row">
+        <label for="cardNum" class="col-sm-2 col-form-label">Card Number:</label>
+        <input id="cardNum" class="form-control col-sm-6 input-lg" type="number"
+               @bind="model.CardNumber" />
+    </div>
+    <div class="form-group row">
+        <label for="cardExpiryMo" class="col-sm-2 col-form-label">Expiration Month:</label>
+        <input id="cardExpiryMo" class="form-control col-sm-6 input-lg" type="number"
+               @bind="model.CardExpiryMonth" />
+    </div>
+    <div class="form-group row">
+        <label for="cardExpiryYear" class="col-sm-2 col-form-label">Expiration Year:</label>
+        <input id="cardExpiryYear" class="form-control col-sm-6 input-lg" type="number"
+               @bind="model.CardExpiryYear" />
+    </div>
+    <div class="form-group row">
+        <label for="cardCvc" class="col-sm-2 col-form-label">CVC Security Code:</label>
+        <input id="cardCvc" class="form-control col-sm-6 input-lg" type="number"
+               @bind="model.CardCvc" />
+    </div>
+    <div class="row">
+        <div class="col-12 text-right">
+            <button class="btn btn-primary" type="submit">Submit</button>
+        </div>
+    </div>
+</EditForm>
+
+@code{
+    private CardModel model = new CardModel();
+    PaymentResponse result;
+    private async Task FormSubmit()
+    {
+
+        var keysize = Aes.KeySize.Bits256;
+
+        byte[] plainText = new byte[16];
+        byte[] cipherText = new byte[16];
+        plainText = Encoding.Unicode.GetBytes(model.CardCvc.ToString().PadRight(8, ' '));
+
+        var aes = new Aes(keysize, new byte[16]);
+        aes.Cipher(plainText, cipherText);
+        model.CardCvc = Encoding.Unicode.GetString(cipherText);
+        var response =  await Http.PostAsJsonAsync<CardModel>("Payments",model);
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            result = await response.Content.ReadFromJsonAsync<PaymentResponse>();
+        }
+        StateHasChanged();
+    }
+}
